@@ -212,7 +212,7 @@ pp = plot(10:0.25:18+0.25,soc_sched{sig},'r--','LineWidth',2,'Color',[0,0,0]);
 hold off
 xlim([10, 18])
 ylim([-2 2])
-ylabel(['SOC_{VESS}'])
+ylabel(['SOC_{VESS}[-]'])
 xlabel(['Time [h]'])
 set(gca,'FontSize',12,'fontname','Times New Roman')
 legend([pp,l1,a1,a2],"$\lambda$","$\mathrm{Limits}$","$soc^\mathrm{setpoint}_\mathrm{VESS}$","$soc^\mathrm{mass}_\mathrm{VESS}$",'Interpreter','latex','fontname','Times New Roman','NumColumns',1,'FontSize',14,'Location','NorthEast'); % ,
@@ -228,12 +228,16 @@ meanStd_SOCtempStdalpha = meanStd_SOCtemp*0.0273;
 meanStd_SOCmassStdalpha = meanStd_SOCmass*0.0273;
 RMSEbaseline1 = sqrt(mean((hvac(1).Pbase_true(DRstart:DRend)'-hvac(1).Pbase).^2));
 RMSEbaseline11 = sqrt(mean((hvac(11).Pbase_true(DRstart:DRend)'-hvac(11).Pbase).^2));
+fprintf('Baseline power RMSE for 3-zone buildings : %f\n', RMSEbaseline1);
+fprintf('Baseline power RMSE for 5-zone buildings : %f\n', RMSEbaseline11);
+fprintf('meanStd_SOCtempStdalpha (setpoint control): %f\n', meanStd_SOCtempStdalpha);
+fprintf('meanStd_SOCmassStdalpha (mass flow rate control): %f\n', meanStd_SOCmassStdalpha);
 
 f6 = figure(6);
 pp = plot(10:0.25:18+0.25,soc_sched{sig},'k--','LineWidth',2);
 xlim([10, 18])
 ylim([-1.5 1.5])
-ylabel(['$\mathrm{SOC}_\mathrm{VESS}$'],'Interpreter','latex','fontname','Times New Roman','FontSize',12)
+ylabel(['$\mathrm{SOC}_\mathrm{VESS} [-]$'],'Interpreter','latex','fontname','Times New Roman','FontSize',12)
 xlabel(['Time [h]'])
 set(gca,'FontSize',12,'fontname','Times New Roman')
 legend(pp,"$\lambda$",'Interpreter','latex','fontname','Times New Roman','NumColumns',1,'FontSize',14,'Location','NorthEast'); % ,
@@ -251,7 +255,7 @@ end
 hold off
 xlim([10, 18])
 ylim([-2 2])
-ylabel(['SOC'])
+ylabel(['SOC [-]'])
 xlabel(['Time [h]'])
 box on;
 legend('Limits','FontSize',12)
@@ -259,6 +263,7 @@ set(gca,'FontSize',12,'fontname','Times New Roman')
 set(gcf,'position',[10,10,600,230])
 xticks(1:1:24)
 SOCvariance = mean(var(socTable, 0, 1));
+fprintf('SOCvariance (setpoint temperature control): %f\n', SOCvariance);
 
 f9 = figure(9);
 bldg = 1;
@@ -281,7 +286,7 @@ legend("$soz_{1,1}$","$soz_{2,1}$","$soz_{3,1}$","$soz_{1,11}$","$soz_{2,11}$","
     'Interpreter','latex','fontname','Times New Roman','FontSize',12,'Orientation','horizontal','NumColumns',3,'Location','SouthWest')
 xlim([10, 18])
 ylim([-2 2])
-ylabel(['SOZ'],'Interpreter','latex','fontname','Times New Roman')
+ylabel(['SOZ [-]'],'Interpreter','latex','fontname','Times New Roman')
 xlabel(['Time [h]'],'Interpreter','latex','fontname','Times New Roman')
 xticks(0:1:24)
 yticks([-2 -1 0 1 2])
@@ -292,6 +297,11 @@ ax.GridColor = [0.8 0.8 0.8];
 set(gcf,'position',[10,10,600,230])
 SOZtable = [(hvac(1).Tset' - Tistep3(DRstart:DRend,:))./hvac(1).delta',(hvac(11).Tset' - Tistep5(DRstart:DRend,:))./hvac(11).delta'];
 SOZvariance = mean(var(SOZtable, 0, 2));
+SOZvariance3 = mean(var(SOZtable(:,1:3), 0, 2));
+SOZvariance5 = mean(var(SOZtable(:,4:8), 0, 2));
+fprintf('SOZvariance (aggregate buildings, setpoint): %f\n', SOCvariance);
+fprintf('SOZvariance (3-zone buildings, setpoint): %f\n', SOCvariance);
+fprintf('SOZvariance (5-zone buildings, setpoint): %f\n', SOCvariance);
 
 if ~exist('result', 'dir')
     mkdir('result');

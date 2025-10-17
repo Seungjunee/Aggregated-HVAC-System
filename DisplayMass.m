@@ -193,7 +193,7 @@ end
 hold off
 xlim([10, 18])
 ylim([-3 3])
-ylabel(['SOC'])
+ylabel(['SOC [-]'])
 xlabel(['Time [h]'])
 box on;
 set(gca,'FontSize',12,'fontname','Times New Roman')
@@ -242,7 +242,7 @@ legend("$soz_{1,1}$","$soz_{2,1}$","$soz_{3,1}$","$soz_{1,11}$","$soz_{2,11}$","
     'Interpreter','latex','fontname','Times New Roman','FontSize',12,'Orientation','horizontal','NumColumns',3,'Location','SouthWest')
 xlim([10, 18])
 ylim([-2 2])
-ylabel(['SOZ'],'Interpreter','latex','fontname','Times New Roman')
+ylabel(['SOZ [-]'],'Interpreter','latex','fontname','Times New Roman')
 xlabel(['Time [h]'],'Interpreter','latex','fontname','Times New Roman')
 xticks(0:1:24)
 yticks([-2 -1 0 1 2])
@@ -253,3 +253,8 @@ ax.GridColor = [0.8 0.8 0.8];
 set(gcf,'position',[10,10,600,230])
 SOZtable = [(hvac(1).Tset' - Tistep3(DRstart:DRend,:))./hvacMass(1).delta',(hvac(11).Tset' - Tistep5(DRstart:DRend,:))./hvacMass(11).delta'];
 SOZvariance = mean(var(SOZtable, 0, 2));
+SOZvariance3 = mean(var(SOZtable(:,1:3), 0, 2));
+SOZvariance5 = mean(var(SOZtable(:,4:8), 0, 2));
+fprintf('SOZvariance (aggregate buildings, mass flow rate): %f\n', SOCvariance);
+fprintf('SOZvariance (3-zone buildings, mass flow rate): %f\n', SOCvariance);
+fprintf('SOZvariance (5-zone buildings, mass flow rate): %f\n', SOCvariance);

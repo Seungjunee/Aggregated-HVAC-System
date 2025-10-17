@@ -24,8 +24,6 @@ building_results = struct('validTin', [], 'Tistep', [], 'mse', []);
 for bldg = 1:NumB
     Tset = 25 * ones(NumZ,1) + rand(NumZ,1);
     delta = 1 + 0.5*rand(NumZ,1);
-%     Tset = 25* ones(NumZ,1);
-%     delta = 1* ones(NumZ,1);
     ep{bldg} = mlep;
     ep{bldg}.idfFile = strcat('BuildingID',int2str(bldg));
     ep{bldg}.epwFile = 'USA_FL_Miami.Intl.AP.722020_TMY3';
@@ -62,11 +60,6 @@ for bldg = 1:NumB
     % Stop co-simulation process
     ep{bldg}.stop;
     
-    % logTable_15min = logTable(1:15:end,:);
-    % for i = 2:38
-    %     temp = reshape(logTable{2:end,i},15,[]);
-    %     logTable_15min{1:end-1,i} = mean(temp)';
-    % end
     %% optimization for identification
     weekday_time = [];
     for week = 0:2
@@ -76,10 +69,6 @@ for bldg = 1:NumB
         weekday_time = [weekday_time;96*7*week + 96*3 + [DRstart:DRend]];
         weekday_time = [weekday_time;96*7*week + 96*4 + [DRstart:DRend]];
     end
-%     weekday_time = 1:96*5;
-%     for week = 1:2
-%         weekday_time = [weekday_time;96*7*week + [4*6:96*5]];
-%     end
     linear_time = reshape(weekday_time',1,[]);
     Tistep = table2array(logTable(linear_time,contains(logTable.Properties.VariableNames,'Zone_Air_Temperature')));
     Coolingrate = table2array(logTable(linear_time,contains(logTable.Properties.VariableNames,'Zone_Air_System_Sensible_Cooling_Rate')))./1e3; % [kW]
@@ -199,12 +188,12 @@ for bldg = 1:NumB
     ylabel('P(k) [kW]')
     set(gca,'FontSize',15)
         
-    folderName = strcat('3zoneID',int2str(bldg));         % 하위 폴더 이름
-    fileName   = strcat('BuildingID',int2str(bldg),'.eio');     % 대상 텍스트 파일 이름
+    folderName = strcat('3zoneID',int2str(bldg));
+    fileName   = strcat('BuildingID',int2str(bldg),'.eio');
     fullPath   = fullfile(folderName, fileName);
     fid = fopen(fullPath, 'r');
     if fid == -1
-        error('파일을 열 수 없습니다: %s', fullPath);
+        error('Error1: %s', fullPath);
     end
     m_high = [];
     tline = fgetl(fid);
@@ -216,7 +205,7 @@ for bldg = 1:NumB
             if ~isnan(lastValueNum)
                 m_high(end+1) = lastValueNum; %#ok<SAGROW>
             else
-                fprintf('문자열을 숫자로 변환할 수 없습니다: %s\n', lastValueStr);
+                fprintf('Error2: %s\n', lastValueStr);
             end
         end
         tline = fgetl(fid);
@@ -230,41 +219,20 @@ for bldg = 1:NumB
     building_results(bldg).mse = mse;
     
     delete(strcat('3zoneID',int2str(bldg),'/*'));
-%     save(strcat('coefficients',int2str(bldg),'.mat'),'Tset','delta','m_high','m_low','valA','valB','valC','valD','coeff_1','coeff_2','Fancoeff_1','Fancoeff_2','Fancoeff_3',...
-%         'a_MB','b_MB','validTin','Tistep','DRsize','qmin','qmax')
 end
-% nn=0;
-% NumB = 10;
-% NumZ = 3;
-% DRstart = 10*4;
-% DRend = 18*4 + 1;
-% DRsize = DRend - DRstart + 1;
 fig22 = figure(22);
-% subplot(1,2,1);
 hold on
-% validTin = zeros(DRsize,NumZ);
-% validTin(1,:) = Tistep((nn*DRsize+1),:);
 all_mse = [];
 for bldg = 1:NumB
     plot(building_results(bldg).Tistep, building_results(bldg).validTin, '.k', 'MarkerSize', 16);
     all_mse = [all_mse; (building_results(bldg).Tistep - building_results(bldg).validTin).^2];
 end
 
-% 전체 RMSE 계산
 mse = mean(all_mse, 'all');
 rmse = sqrt(mse);
 fprintf('Total RMSE for all buildings: %f\n', rmse);
 
 plot(20:0.1:30, 20:0.1:30,'r','LineWidth',2)
-% fivezone
-% subplot(1,2,2);
-% cd ../Fivezone_buildings
-% plot(Tistep((nn*DRsize+1):(nn+1)*DRsize,:),validTin,'.k','MarkerSize',12);
-% for bldg = 2:10
-%     load(strcat('coefficients',int2str(bldg),'.mat'));
-%     plot(Tistep((nn*DRsize+1):(nn+1)*DRsize,:),validTin,'.k','MarkerSize',12);
-% end
-% plot(20:0.1:26, 20:0.1:26,'r','LineWidth',2)
 hold off
 xlim([24 27])
 ylim([24 27])
@@ -275,4 +243,9 @@ ylabel(['Predicted Temperature [' char(176) 'C]'])
 set(gca,'FontSize',24)
 set(gcf,'position',[10,10,600,600])
 box on;
+
 cd ../
+cd result
+savefig(fig22,'3-zone Identification');
+cd ../
+
