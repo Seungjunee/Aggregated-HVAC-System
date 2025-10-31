@@ -1,8 +1,8 @@
 # Aggregated-HVAC-System
-Supplementary code for "Modeling and Control of Aggregated Energy Flexibility in Multi-zone HVAC Systems". 
-email: seungjun.hahm@postech.ac.kr
-### About
+Supplementary code for "Modeling and Control of Aggregated Energy Flexibility in Multi-zone HVAC Systems".(working paper)
 
+### About
+email: seungjun.hahm@postech.ac.kr
 ## Prerequisites
 To run this code you will need:
 * [MATLAB] (tested on 2020a or later)
