@@ -1,5 +1,5 @@
 # Aggregated-HVAC-System
-Supplementary code for "Modeling and Control of Aggregated Energy Flexibility in Multi-zone HVAC Systems".(working paper)
+Supplementary code for "Modeling and Control of Aggregated Energy Flexibility in Multi-zone HVAC Systems"(working paper).
 
 ### About
 email: seungjun.hahm@postech.ac.kr
