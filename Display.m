@@ -299,9 +299,9 @@ SOZtable = [(hvac(1).Tset' - Tistep3(DRstart:DRend,:))./hvac(1).delta',(hvac(11)
 SOZvariance = mean(var(SOZtable, 0, 2));
 SOZvariance3 = mean(var(SOZtable(:,1:3), 0, 2));
 SOZvariance5 = mean(var(SOZtable(:,4:8), 0, 2));
-fprintf('SOZvariance (aggregate buildings, setpoint): %f\n', SOCvariance);
-fprintf('SOZvariance (3-zone buildings, setpoint): %f\n', SOCvariance);
-fprintf('SOZvariance (5-zone buildings, setpoint): %f\n', SOCvariance);
+fprintf('SOZvariance (aggregate buildings, setpoint): %f\n', SOZvariance);
+fprintf('SOZvariance (3-zone buildings, setpoint): %f\n', SOZvariance3);
+fprintf('SOZvariance (5-zone buildings, setpoint): %f\n', SOZvariance5);
 
 if ~exist('result', 'dir')
     mkdir('result');

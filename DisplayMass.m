@@ -203,6 +203,7 @@ ylim([-2 2])
 % legend(string(1:NumB),'NumColumns',4)
 legend('Limits','FontSize',12)
 SOCvariance = mean(var(socTable, 0, 1));
+fprintf('SOCvariance (mass flow rate): %f\n', SOCvariance);
 
 f8 = figure(8);
 plot(10:0.25:18,((hvacMass(11).Tset'-Tistep5(DRstart:DRend,:))./hvacMass(11).delta'),'-o','LineWidth',3,'MarkerSize',3)
@@ -255,6 +256,6 @@ SOZtable = [(hvac(1).Tset' - Tistep3(DRstart:DRend,:))./hvacMass(1).delta',(hvac
 SOZvariance = mean(var(SOZtable, 0, 2));
 SOZvariance3 = mean(var(SOZtable(:,1:3), 0, 2));
 SOZvariance5 = mean(var(SOZtable(:,4:8), 0, 2));
-fprintf('SOZvariance (aggregate buildings, mass flow rate): %f\n', SOCvariance);
-fprintf('SOZvariance (3-zone buildings, mass flow rate): %f\n', SOCvariance);
-fprintf('SOZvariance (5-zone buildings, mass flow rate): %f\n', SOCvariance);
+fprintf('SOZvariance (aggregate buildings, mass flow rate): %f\n', SOZvariance);
+fprintf('SOZvariance (3-zone buildings, mass flow rate): %f\n', SOZvariance3);
+fprintf('SOZvariance (5-zone buildings, mass flow rate): %f\n', SOZvariance5);
