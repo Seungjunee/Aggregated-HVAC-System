@@ -1,7 +1,21 @@
 %% Matlab <-> EnergyPlus co-simulation
 clc
 close all
-clear all
+clearvars -except methodCase modelRoot
+
+repoRoot = fileparts(fileparts(mfilename('fullpath')));
+addpath(fullfile(repoRoot, 'src'));
+if ~exist('methodCase', 'var')
+    methodCase = 'D';
+end
+methodCorrections = method_correction_config(methodCase);
+if ~exist('modelRoot', 'var')
+    modelRoot = repoRoot;
+end
+threeZoneDir = fullfile(modelRoot, 'Threezone_buildings');
+fiveZoneDir = fullfile(modelRoot, 'Fivezone_buildings');
+assert(isfolder(threeZoneDir), 'Missing model directory: %s', threeZoneDir);
+assert(isfolder(fiveZoneDir), 'Missing model directory: %s', fiveZoneDir);
 
 %   Construct HVAC systems
 day = 9;
@@ -13,25 +27,24 @@ DRend = 18*4;
 DRsize = DRend - DRstart + 1;
 
 for bldg = 1:NumB1
-    hvacMass(bldg) = hvac_model_temperature(1/4,bldg,"Threezone_buildings",'Mass');
+    hvacMass(bldg) = hvac_model_temperature(1/4,bldg,threeZoneDir,'Mass'); %#ok<SAGROW>
 end
 for bldg = (NumB1+1):NumB
-    hvacMass(bldg) = hvac_model_temperature(1/4,bldg-NumB1,"Fivezone_buildings",'Mass');
+    hvacMass(bldg) = hvac_model_temperature(1/4,bldg-NumB1,fiveZoneDir,'Mass');
 end
 b_agg = 1/sum(1./[hvacMass.bhat]);
 a_agg = sum([hvacMass.a]./[hvacMass.bhat])*b_agg;
 C_agg = 0.25/b_agg;
-Pbmaxhvac = [];
-Pbminhvac = [];
+numPowerSteps = numel(hvacMass(1).Pbmin);
+Pbmaxhvac = zeros(NumB, numPowerSteps);
+Pbminhvac = zeros(NumB, numPowerSteps);
 
 for bldg = 1:NumB
-    Pbminhvac = [Pbminhvac; (hvacMass(bldg).Pbmin)'];
-    Pbmaxhvac = [Pbmaxhvac; (hvacMass(bldg).Pbmax)'];
-    %     Pbaggmin = Pbaggmin + hvac(bldg).Pbmin;
-    %     Pbaggmax = Pbaggmax + hvac(bldg).Pbmax;
+    Pbminhvac(bldg, :) = hvacMass(bldg).Pbmin(:)';
+    Pbmaxhvac(bldg, :) = hvacMass(bldg).Pbmax(:)';
 end
-Pbaggmin = min(Pbminhvac .* [hvacMass.bhat]' / b_agg,[],1);
-Pbaggmax = min(Pbmaxhvac .* [hvacMass.bhat]' / b_agg,[],1);
+[Pbaggmin, Pbaggmax] = vess_power_limits(hvacMass, a_agg, b_agg, ...
+    methodCorrections.equation30Limits);
 PbaggminRelax = sum(Pbminhvac,2);
 PbaggmaxRelax = sum(Pbmaxhvac,2);
 bhatTable = round([hvacMass.bhat],2);
@@ -42,17 +55,15 @@ PbmaxTable = round(mean(Pbmaxhvac,2),2);
 
 tauagg = [150*ones(1,16) 100*ones(1,16)];
 
-DR_signal1 = [zeros(1,8), zeros(1,25)];
-DR_signal1 = -[-20 -35 -50 -65 -80 -90 -100 -100,-100,-90,-80, -65, -50, -35, -20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 80, 70, 60, 50, 40, 25, 10]*0.15;
 DR_signal1 = -[-20 -35 -50 -65 -75 -85 -90 -95,-90,-85,-80, -65, -50, -35, -20, -5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 90, 80, 70, 55, 40, 25, 10]*0.18;
-% [DR_signal1,~] = demand_response(a_agg,b_agg,0,Pbaggmin,Pbaggmax,DRsize,RTP(DRstart:DRend),[tauagg, 150, 150]);
+% [DR_signal1,~] = schedule_demand_response(a_agg,b_agg,0,Pbaggmin,Pbaggmax,DRsize,RTP(DRstart:DRend),[tauagg, 150, 150]);
 % DR_signal1 = [zeros(1,8), 150*ones(1,25)]*0.1;
 DR_signal2 = [zeros(1,10), Pbaggmax(11)*2 Pbaggmax(12)*2 Pbaggmax(13) zeros(1,10), Pbaggmax(24)*2 Pbaggmax(25)*2 Pbaggmax(26)*2 zeros(1,7)];
 DR_signal3 = [zeros(1,8), 150*ones(1,25)]*0.1;
 DR_signal4 = [-80 -90 -120 -140 -200 -170 -100 -100,-100,-90,-80, -65, -50, -35, -20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 80, 80, 80, 90, 90, 90, 90]*2;
-[P_sched{1},soc_sched{1}] = demand_response(a_agg,b_agg,0,-DR_signal1,DR_signal1,73-40,zeros(33,1),[tauagg, 0, 0]);
-% [P_sched{1},soc_sched{1}] = demand_response(a_agg,b_agg,0,-DR_signal2,DR_signal2,73-40,zeros(33,1),[tauagg, 0, 0]);
-[P_sched{3},soc_sched{3}] = demand_response(a_agg,b_agg,0,-DR_signal3,DR_signal3,73-40,zeros(33,1),[tauagg, 0, 0]);
+[P_sched{1},soc_sched{1}] = schedule_demand_response(a_agg,b_agg,0,-DR_signal1,DR_signal1,73-40,zeros(33,1),[tauagg, 0, 0],methodCorrections.socLimit);
+% [P_sched{1},soc_sched{1}] = schedule_demand_response(a_agg,b_agg,0,-DR_signal2,DR_signal2,73-40,zeros(33,1),[tauagg, 0, 0]);
+[P_sched{3},soc_sched{3}] = schedule_demand_response(a_agg,b_agg,0,-DR_signal3,DR_signal3,73-40,zeros(33,1),[tauagg, 0, 0],methodCorrections.socLimit);
 
 for sig = 1
     for bldg = 1:NumB
@@ -63,11 +74,10 @@ for sig = 1
     endTime = 10*24*60*60; %[s]
     iLog = 1;
     t = 0;
-    record_time = [];
     % Start the co-simulation process and communication.
     PrefMass = zeros(DRsize,NumB);
     Coileff = 0.68; ChillerCOP = 3.9; Tc = 13; cair = 1.03;
-    soc_table = zeros(1,NumB);
+    socTable = zeros(1,NumB);
     for bldg = 1:NumB
 %         Pref(:,bldg) = hvac(bldg).Pbase_true(96*1 + [DRstart:DRend])';
         PrefMass(:,bldg) = hvacMass(bldg).Pbase';
@@ -83,7 +93,9 @@ for sig = 1
         end
         for bldg = 1:NumB
             tempEnd = table2array(hvacMass(bldg).logTable(end,contains(hvacMass(bldg).logTable.Properties.VariableNames,'Zone_Air_Temperature')));
-            socTable(bldg) = mean((hvacMass(bldg).Tset' - tempEnd)./(hvacMass(bldg).delta'));
+            sozMeasured = (hvacMass(bldg).Tset' - tempEnd) ./ hvacMass(bldg).delta';
+            socTable(bldg) = aggregate_zone_soc(sozMeasured, ...
+                hvacMass(bldg).Btild, methodCorrections.weightedBuildingSoc);
         end
         for bldg = 1:NumB
             Tm = table2array(hvacMass(bldg).logTable(end,contains(hvacMass(bldg).logTable.Properties.VariableNames,'Mix')));
@@ -102,9 +114,6 @@ for sig = 1
             % Prepare inputs (for next step t+1)
             if (t < day*24*60*60 + 3600*9.75) || (t >= day*24*60*60 + 3600*18)
                 mdot = hvacMass(bldg).Massflowbase(t/900+1,:);
-            if bldg<11
-                mdot = mdot;
-            end
             else
                 PrefMass((t-day*24*60*60)/900-DRstart+2,bldg) = PrefMass((t-day*24*60*60)/900-DRstart+2,bldg) + P_sched{sig}((t-day*24*60*60)/900-DRstart+2) * b_agg/hvacMass(bldg).bhat + (a_agg*sum(socTable./[hvacMass.bhat])/sum(1./[hvacMass.bhat]) - hvacMass(bldg).a*socTable(bldg))/hvacMass(bldg).bhat;
                 tempb = cair*(Tm-Tc)/(Coileff*ChillerCOP) + hvacMass(bldg).Fancoeff_2;
@@ -115,15 +124,20 @@ for sig = 1
                 prob = optimproblem;
                 prob.Objective = sum((soc_star - soz_star).^2);
                 mtot = max(sum(hvacMass(bldg).m_low),min(mtot,sum(hvacMass(bldg).m_high*1.2)));
-                prob.Constraints = sum(mdotvar) == mtot;
+                prob.Constraints.massBalance = sum(mdotvar) == mtot;
+                zoneDynamics = optimconstr(hvacMass(bldg).numZ, 1);
                 for z = 1:hvacMass(bldg).numZ
-                    prob.Constraints = [prob.Constraints; soz_star(z) == hvacMass(bldg).A(z,:)*soz + hvacMass(bldg).Btild(z)*(mdotvar(z)*(Ti(z)-Tc)-hvacMass(bldg).qbase(z,t/900 - 96*day - DRstart + 2))];
+                    zoneDynamics(z) = soz_star(z) == hvacMass(bldg).A(z,:)*soz + hvacMass(bldg).Btild(z)*(mdotvar(z)*(Ti(z)-Tc)-hvacMass(bldg).qbase(z,t/900 - 96*day - DRstart + 2));
 %                     prob.Constraints = [prob.Constraints; soz_star(z) == hvac(bldg).A(z,:)*soz + hvac(bldg).Btild(z)*(mdotvar(z)*(Ti(z)-Tc)-hvac(bldg).qbase_true(z,t/900+1))];
                 end
-                prob.Constraints = [prob.Constraints; soc_star == mean(soz_star)];
-                tic
-                [sol,fval,exitflag,output] = solve(prob);
-                record_time = [record_time, toc];
+                prob.Constraints.zoneDynamics = zoneDynamics;
+                zoneWeights = zone_soc_weights(hvacMass(bldg).Btild, ...
+                    methodCorrections.weightedBuildingSoc);
+                prob.Constraints.socAggregation = ...
+                    soc_star == zoneWeights' * soz_star;
+                [sol,~,exitflag] = solve(prob);
+                assert(exitflag > 0, ...
+                    'Mass-flow allocation optimization did not converge.');
                 mdot = sol.mdotvar';
 %                 mdot = hvac(bldg).Massflowbase(t/900+1,:);
             end
@@ -137,4 +151,12 @@ for sig = 1
         hvacMass(bldg).ep.stop
     end
 end
-save(strcat('CaseMass',int2str(sig),'.mat'),'a_agg','b_agg','C_agg','hvacMass','P_sched','Pbaggmax','PbaggmaxRelax','Pbaggmin','PbaggminRelax','PrefMass','soc_sched')
+resultDir = fullfile(repoRoot, 'output', 'method_corrections');
+if ~isfolder(resultDir)
+    mkdir(resultDir);
+end
+save(fullfile(resultDir, sprintf('mass_flow_control_%s.mat', ...
+    lower(methodCorrections.name))), ...
+    'a_agg', 'b_agg', 'C_agg', 'hvacMass', 'P_sched', 'Pbaggmax', ...
+    'PbaggmaxRelax', 'Pbaggmin', 'PbaggminRelax', 'PrefMass', ...
+    'soc_sched', 'methodCorrections')

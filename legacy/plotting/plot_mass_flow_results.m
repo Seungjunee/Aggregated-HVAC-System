@@ -1,4 +1,5 @@
-load('CaseMass1.mat'); sig = 1;
+repoRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+load(fullfile(repoRoot, 'data', 'published', 'mass_flow_control.mat')); sig = 1;
 NumB = 20;
 DRstart = 24*4*9 + 10*4;
 DRend = 24*4*9 + 18*4;

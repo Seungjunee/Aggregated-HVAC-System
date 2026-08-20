@@ -1,7 +1,21 @@
 %% Matlab <-> EnergyPlus co-simulation
 clc
 close all
-clear all
+clearvars -except methodCase modelRoot
+
+repoRoot = fileparts(fileparts(mfilename('fullpath')));
+addpath(fullfile(repoRoot, 'src'));
+if ~exist('methodCase', 'var')
+    methodCase = 'D';
+end
+methodCorrections = method_correction_config(methodCase);
+if ~exist('modelRoot', 'var')
+    modelRoot = repoRoot;
+end
+threeZoneDir = fullfile(modelRoot, 'Threezone_buildings');
+fiveZoneDir = fullfile(modelRoot, 'Fivezone_buildings');
+assert(isfolder(threeZoneDir), 'Missing model directory: %s', threeZoneDir);
+assert(isfolder(fiveZoneDir), 'Missing model directory: %s', fiveZoneDir);
 
 %   Construct HVAC systems
 day = 9;
@@ -13,25 +27,26 @@ DRend = 18*4;
 DRsize = DRend - DRstart + 1;
 
 for bldg = 1:NumB1
-    hvac(bldg) = hvac_model_temperature(1/4,bldg,"Threezone_buildings",'Temperature');
+    hvac(bldg) = hvac_model_temperature(1/4,bldg,threeZoneDir,'Temperature'); %#ok<SAGROW>
 end
 for bldg = (NumB1+1):NumB
-    hvac(bldg) = hvac_model_temperature(1/4,bldg-NumB1,"Fivezone_buildings",'Temperature');
+    hvac(bldg) = hvac_model_temperature(1/4,bldg-NumB1,fiveZoneDir,'Temperature');
 end
 b_agg = 1/sum(1./[hvac.bhat]);
 a_agg = sum([hvac.a]./[hvac.bhat])*b_agg;
 C_agg = 0.25/b_agg;
 Std_alpha = sqrt(sum(([hvac.a]-a_agg).^2./[hvac.bhat])/sum(1./[hvac.bhat]));
 
-Pbmaxhvac = [];
-Pbminhvac = [];
+numPowerSteps = numel(hvac(1).Pbmin);
+Pbmaxhvac = zeros(NumB, numPowerSteps);
+Pbminhvac = zeros(NumB, numPowerSteps);
 
 for bldg = 1:NumB
-    Pbminhvac = [Pbminhvac; (hvac(bldg).Pbmin)'];
-    Pbmaxhvac = [Pbmaxhvac; (hvac(bldg).Pbmax)'];
+    Pbminhvac(bldg, :) = hvac(bldg).Pbmin(:)';
+    Pbmaxhvac(bldg, :) = hvac(bldg).Pbmax(:)';
 end
-Pbaggmin = min(Pbminhvac .* [hvac.bhat]' / b_agg,[],1);
-Pbaggmax = min(Pbmaxhvac .* [hvac.bhat]' / b_agg,[],1);
+[Pbaggmin, Pbaggmax] = vess_power_limits(hvac, a_agg, b_agg, ...
+    methodCorrections.equation30Limits);
 PbaggminRelax = sum(Pbminhvac,2);
 PbaggmaxRelax = sum(Pbmaxhvac,2);
 bhatTable = round([hvac.bhat],2);
@@ -42,16 +57,14 @@ PbmaxTable = round(mean(Pbmaxhvac,2),2);
 
 tauagg = [150*ones(1,16) 100*ones(1,18)]*5;
 
-DR_signal1 = [zeros(1,8), zeros(1,25)];
 DR_signal1 = -[-20 -35 -50 -65 -75 -85 -90 -95,-90,-85,-80, -65, -50, -35, -20, -5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 90, 80, 70, 55, 40, 25, 10]*0.18;
-% [DR_signal1,soc_sched_act] = demand_response(a_agg,b_agg,0,Pbaggmin,Pbaggmax,DRsize,RTP(40:72),tauagg);
+% [DR_signal1,soc_sched_act] = schedule_demand_response(a_agg,b_agg,0,Pbaggmin,Pbaggmax,DRsize,RTP(40:72),tauagg);
 % DR_signal1 = [zeros(1,8), 150*ones(1,25)]*0.1;
 DR_signal2 = [zeros(1,10), Pbaggmax(11)*2 Pbaggmax(12)*2 Pbaggmax(13) zeros(1,10), Pbaggmax(24)*2 Pbaggmax(25)*2 Pbaggmax(26)*2 zeros(1,7)];
 DR_signal3 = [zeros(1,8), 150*ones(1,25)]*0.1;
 DR_signal4 = [-80 -90 -120 -140 -200 -170 -100 -100,-100,-90,-80, -65, -50, -35, -20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 80, 80, 80, 90, 90, 90, 90]*2;
-[P_sched{1},soc_sched{1}] = demand_response(a_agg,b_agg,0,-DR_signal1,DR_signal1,73-40,zeros(33,1),tauagg);
-% [P_sched{1},soc_sched{1}] = demand_response2(a_agg,b_agg,0,Pbaggmin,Pbaggmax,73-40,RTP(40:72),tauagg);
-[P_sched{3},soc_sched{3}] = demand_response(a_agg,b_agg,0,-DR_signal3,DR_signal3,73-40,zeros(33,1),tauagg);
+[P_sched{1},soc_sched{1}] = schedule_demand_response(a_agg,b_agg,0,-DR_signal1,DR_signal1,73-40,zeros(33,1),tauagg,methodCorrections.socLimit);
+[P_sched{3},soc_sched{3}] = schedule_demand_response(a_agg,b_agg,0,-DR_signal3,DR_signal3,73-40,zeros(33,1),tauagg,methodCorrections.socLimit);
 
 for sig = 1
     for bldg = 1:NumB
@@ -93,7 +106,9 @@ for sig = 1
         end
         for bldg = 1:NumB
             tempEnd = table2array(hvac(bldg).logTable(end,contains(hvac(bldg).logTable.Properties.VariableNames,'Zone_Air_Temperature')));
-            socTable(bldg) = mean((hvac(bldg).Tset' - tempEnd)./(hvac(bldg).delta'));
+            sozMeasured = (hvac(bldg).Tset' - tempEnd) ./ hvac(bldg).delta';
+            socTable(bldg) = aggregate_zone_soc(sozMeasured, ...
+                hvac(bldg).Btild, methodCorrections.weightedBuildingSoc);
         end
         for bldg = 1:NumB
             % Prepare inputs (for next step t+1)
@@ -113,18 +128,16 @@ for sig = 1
     for bldg = 1:NumB
         hvac(bldg).ep.stop
     end
-    for bldg = 1:NumB1
-        cd Fivezone_buildings
-        delete(strcat('Bldg_control',int2str(bldg),'/*'));
-        cd ..
-    end
-    for bldg = 1:NumB1
-        cd Threezone_buildings
-        delete(strcat('Bldg_control',int2str(bldg),'/*'));
-        cd ..
-    end
 end
-save(strcat('Case',int2str(sig),'.mat'),'a_agg','b_agg','C_agg','hvac','P_sched','Pnsched','Pbaggmax','PbaggmaxRelax','Pbaggmin','PbaggminRelax','soc_sched','Pref')
+resultDir = fullfile(repoRoot, 'output', 'method_corrections');
+if ~isfolder(resultDir)
+    mkdir(resultDir);
+end
+save(fullfile(resultDir, sprintf('setpoint_control_%s.mat', ...
+    lower(methodCorrections.name))), ...
+    'a_agg', 'b_agg', 'C_agg', 'hvac', 'P_sched', 'Pnsched', ...
+    'Pbaggmax', 'PbaggmaxRelax', 'Pbaggmin', 'PbaggminRelax', ...
+    'soc_sched', 'Pref', 'methodCorrections')
 
 
 

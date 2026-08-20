@@ -41,52 +41,60 @@ classdef hvac_model_temperature
             %   initialization
             %   ts : time step
             %   Ti0 : initial indoor temperature
+            previousFolder = pwd;
+            folderCleanup = onCleanup(@() cd(previousFolder));
             cd(folderpath)
             obj.ep = mlep;
             obj.ep.idfFile = strcat('Building',controlType,int2str(buildidx));
             obj.ep.epwFile = 'USA_FL_Miami.Intl.AP.722020_TMY3';
             obj.ep.outputDirName = strcat('BldgTempControl',int2str(buildidx));
             % Prepare data logging            
-            load(strcat('coefficients',int2str(buildidx),'.mat'))
-            load(strcat('Baseline_info',int2str(buildidx),'.mat'))
+            coefficientData = load(strcat('coefficients',int2str(buildidx),'.mat'));
+            baselineData = load(strcat('Baseline_info',int2str(buildidx),'.mat'));
+            baselineFields = fieldnames(baselineData);
+            for fieldIndex = 1:numel(baselineFields)
+                fieldName = baselineFields{fieldIndex};
+                coefficientData.(fieldName) = baselineData.(fieldName);
+            end
             
             obj.ts = ts;    % time step
-            obj.Tset = Tset;%   degC
-            obj.numZ = length(Tset); 
-            obj.delta = delta;%   degC
+            obj.Tset = coefficientData.Tset;%   degC
+            obj.numZ = length(obj.Tset);
+            obj.delta = coefficientData.delta;%   degC
             
-            obj.coeff_1 = coeff_1;
-            obj.coeff_2 = coeff_2;
-            obj.Fancoeff_1 = Fancoeff_1;
-            obj.Fancoeff_2 = Fancoeff_2;
-            obj.Fancoeff_3 = Fancoeff_3;
+            obj.coeff_1 = coefficientData.coeff_1;
+            obj.coeff_2 = coefficientData.coeff_2;
+            obj.Fancoeff_1 = coefficientData.Fancoeff_1;
+            obj.Fancoeff_2 = coefficientData.Fancoeff_2;
+            obj.Fancoeff_3 = coefficientData.Fancoeff_3;
             
-            obj.A = valA;
-            obj.B = valB;
-            obj.Btild = valB./obj.delta;
-            obj.C = valC;
-            obj.D = valD;
+            obj.A = coefficientData.valA;
+            obj.B = coefficientData.valB;
+            obj.Btild = coefficientData.valB./obj.delta;
+            obj.C = coefficientData.valC;
+            obj.D = coefficientData.valD;
             
-            obj.qbase = qbase;
-            obj.qbase_true = qbase_true;
-            obj.Qbase = Qbase;
-            obj.Pbase = Pbase;
-            obj.Pbase_true = Pbase_true;
+            obj.qbase = coefficientData.qbase;
+            obj.qbase_true = coefficientData.qbase_true;
+            obj.Qbase = coefficientData.Qbase;
+            obj.Pbase = coefficientData.Pbase;
+            obj.Pbase_true = coefficientData.Pbase_true;
             
-            obj.Pbmin = Pbmin;
-            obj.Pbmax = Pbmax;
+            obj.Pbmin = coefficientData.Pbmin;
+            obj.Pbmax = coefficientData.Pbmax;
             
-            obj.a = a_MB; %   dynamics param a
-            obj.b_MB = b_MB;
-            obj.bhat = b_MB/obj.coeff_1;%   dynamics param b
+            obj.a = coefficientData.a_MB; %   dynamics param a
+            obj.a_MB = coefficientData.a_MB;
+            obj.b_MB = coefficientData.b_MB;
+            obj.bhat = obj.b_MB/obj.coeff_1;%   dynamics param b
             obj.ep.initialize
             obj.logTable = table('Size',[0, 1 + obj.ep.nOut],...
                 'VariableTypes',repmat({'double'},1,1 + obj.ep.nOut),...
                 'VariableNames',[{'Time'}; obj.ep.outputSigName]);
-            obj.Massflowbase = Massflowbase;
-            obj.m_low = m_low;
-            obj.m_high = m_high;
-            cd ../
+            obj.Massflowbase = coefficientData.Massflowbase;
+            obj.m_low = coefficientData.m_low;
+            obj.m_high = coefficientData.m_high;
+            clear folderCleanup;
         end
         
         function obj = stop(obj)
