@@ -1,7 +1,8 @@
 # Aggregated HVAC System
 
-Supplementary MATLAB code for the published paper *Modeling and Control of
-Aggregated Energy Flexibility in Multi-zone HVAC Systems*.
+Supplementary MATLAB code for the paper [*Modeling and control of aggregated
+energy flexibility in multi-zone HVAC systems*](https://doi.org/10.1016/j.enbuild.2025.116799),
+published in *Energy and Buildings*.
 
 ## Reproduce the published results
 
@@ -68,6 +69,22 @@ optimization/co-simulation run additionally requires:
 
 The source release associated with the paper is preserved in the
 `paper-original` branch and the `v1.0-paper-original` tag.
+
+## Citation
+
+If you use this repository in your research, please cite the associated paper:
+
+```bibtex
+@article{hahm2026modeling,
+  title   = {Modeling and control of aggregated energy flexibility in multi-zone HVAC systems},
+  author  = {Hahm, Seungjun and Kim, Young-Jin},
+  journal = {Energy and Buildings},
+  volume  = {353},
+  pages   = {116799},
+  year    = {2026},
+  doi     = {10.1016/j.enbuild.2025.116799}
+}
+```
 
 ## Contact
 

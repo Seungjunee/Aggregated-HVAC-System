@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the associated paper."
+title: "Aggregated HVAC System"
+type: software
+authors:
+  - family-names: Hahm
+    given-names: Seungjun
+repository-code: "https://github.com/Seungjunee/Aggregated-HVAC-System"
+license: MIT
+preferred-citation:
+  type: article
+  title: "Modeling and control of aggregated energy flexibility in multi-zone HVAC systems"
+  authors:
+    - family-names: Hahm
+      given-names: Seungjun
+    - family-names: Kim
+      given-names: Young-Jin
+  journal: "Energy and Buildings"
+  volume: 353
+  year: 2026
+  month: 2
+  start: 116799
+  doi: "10.1016/j.enbuild.2025.116799"
